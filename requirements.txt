@@ -5,3 +5,4 @@ pickle4
 openai
 tiktoken
 faiss-cpu
+unstructured
