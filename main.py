@@ -18,7 +18,7 @@ def run_question_answering():
     # Set the OpenAI API key
     url = st.sidebar.text_input("Enter URL to load data:", key="url")
     if url:
-        os.environ["OPENAI_API_KEY"] = "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"
+        
 
         # Load data from the provided URL
         loaders = UnstructuredURLLoader(urls=[url])
