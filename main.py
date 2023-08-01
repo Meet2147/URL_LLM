@@ -43,7 +43,7 @@ def run_question_answering():
             VectorStore = pickle.load(f)
 
         # Create an OpenAI instance for question answering
-        llm = OpenAI(temperature=0, model_name='gpt-3.5-turbo')
+        llm = OpenAI(temperature=0, model_name='text-davinci-003')
 
         # Create a retrieval question-answering chain
         chain = RetrievalQAWithSourcesChain.from_llm(llm=llm, retriever=VectorStore.as_retriever())
