@@ -1,0 +1,7 @@
+Zero-shot prompt refers to a prompt where the model is asked to perform a task for which it was not explicitly trained, and it is expected to generate a response without any specific examples related to the task.
+
+One-shot prompt is not a commonly used term, but it could be loosely understood as a prompt that provides a single example or instruction for the model to perform a task.
+
+Unsupervised prompt typically refers to prompts where the model is given input data without explicit labels or annotations, and it is expected to learn patterns and structure from the data without external guidance.
+
+In the context of language models like GPT-3, few-shot learning has been demonstrated to be highly effective, enabling the model to adapt to new tasks and generate appropriate responses with only a small number of examples or instructions.
