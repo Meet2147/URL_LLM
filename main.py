@@ -106,8 +106,8 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 
 def run_question_answering():
-    # openai.api_key = st.secrets["OPENAI_API_KEY"]
-    OPENAI_API_KEY = "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"
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
+   # OPENAI_API_KEY = "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"
 
     st.title("LLM For URLS")
     # Set the OpenAI API key
