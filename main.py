@@ -20,8 +20,8 @@ def run_question_answering():
 #     label="#### Your OpenAI API key 👇",
 #     placeholder="Paste your openAI API key, sk-",
 #     type="password")
-    load_dotenv(find_dotenv(), override=True)
-    openai_api_key = os.environ.get('OPENAI_API_KEY')
+    
+    openai_api_key = openai.api_key
 
     st.title("LLM For URLS")
     # Set the OpenAI API key
