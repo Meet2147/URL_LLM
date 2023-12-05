@@ -11,7 +11,7 @@ from langchain.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 import os
-from dotenv import load_dotenv, find_dotenv
+
 
 def run_question_answering():
     openai.api_key = st.secrets["OPENAI_API_KEY"]
