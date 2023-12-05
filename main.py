@@ -1,67 +1,102 @@
+import pickle
 import streamlit as st
-from streamlit_chat import message
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import ConversationalRetrievalChain
-from langchain.vectorstores import FAISS
-import pandas as pd
+from langchain.document_loaders import UnstructuredURLLoader
+from langchain.chains import RetrievalQAWithSourcesChain
+from langchain.chains.question_answering import load_qa_chain
+from langchain import OpenAI
+from langchain.callbacks import get_openai_callback
+import os
 import openai
-import pdfplumber
-import requests
-from io import BytesIO
+from langchain.vectorstores import FAISS
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.text_splitter import CharacterTextSplitter
+import os
+from dotenv import load_dotenv, find_dotenv
 
-# Set up OpenAI API Key
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+def run_question_answering():
+    # openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# File uploader
-uploaded_file = st.sidebar.file_uploader("Upload CSV, Excel, or PDF", type=["csv", "xlsx", "pdf"])
-url_input = st.sidebar.text_input("Or enter a URL")
+# openai_api_key = st.sidebar.text_input(
+#     label="#### Your OpenAI API key 👇",
+#     placeholder="Paste your openAI API key, sk-",
+#     type="password")
+    load_dotenv(find_dotenv(), override=True)
+    openai_api_key = os.environ.get('OPENAI_API_KEY')
 
-data = None
+    st.title("LLM For URLS")
+    # Set the OpenAI API key
+    url = st.sidebar.text_input("Enter URL to load data:", key="url")
+    if url:
+        
 
-try:
-    if uploaded_file:
-        if uploaded_file.type == "text/csv":
-            df = pd.read_csv(uploaded_file)
-            data = df[df.columns[0]].tolist()
-        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            df = pd.read_excel(uploaded_file)
-            data = df[df.columns[0]].tolist()
-        elif uploaded_file.type == "application/pdf":
-            with pdfplumber.open(uploaded_file) as pdf:
-                data = [page.extract_text() for page in pdf.pages if page.extract_text() is not None]
+        # Load data from the provided URL
+        loaders = UnstructuredURLLoader(urls=[url])
+        data = loaders.load()
 
-    elif url_input:
-        response = requests.get(url_input)
-        data = response.text
+        # Split the loaded text into chunks
+        text_splitter = CharacterTextSplitter(separator='\n', chunk_size=1000, chunk_overlap=200)
+        docs = text_splitter.split_documents(data)
 
-    if data:
+        # Create OpenAI embeddings for the documents
         embeddings = OpenAIEmbeddings()
-        vectorstore = FAISS.from_documents(data, embeddings)
 
-        chain = ConversationalRetrievalChain.from_llm(
-            llm=ChatOpenAI(temperature=0.0, model_name='gpt-3.5-turbo'),
-            retriever=vectorstore.as_retriever())
+        # Build a FAISS vector store using the documents and embeddings
+        vectorStore_openAI = FAISS.from_documents(docs, embeddings)
 
-        if 'history' not in st.session_state:
-            st.session_state['history'] = []
+        # Save the vector store to a file
+        with open("faiss_store_openai.pkl", "wb") as f:
+            pickle.dump(vectorStore_openAI, f)
 
-        # Chat interface
-        container = st.container()
-        with container:
-            with st.form(key='my_form', clear_on_submit=True):
-                user_input = st.text_input("Query:", placeholder="Talk about your csv data here :)", key='input')
-                submit_button = st.form_submit_button(label='Send')
+        # Load the vector store from the file
+        with open("faiss_store_openai.pkl", "rb") as f:
+            VectorStore = pickle.load(f)
 
-            if submit_button and user_input:
-                output = chain({"question": user_input, "chat_history": st.session_state['history']})
-                st.session_state['history'].append((user_input, output["answer"]))
+        # Create an OpenAI instance for question answering
+        llm = OpenAI(temperature=0, model_name='text-davinci-003')
 
-        response_container = st.container()
-        with response_container:
-            for i, (user_msg, bot_msg) in enumerate(st.session_state['history']):
-                message(user_msg, is_user=True, key=f'user_{i}', avatar_style="big-smile")
-                message(bot_msg, key=f'bot_{i}', avatar_style="thumbs")
+        # Create a retrieval question-answering chain
+        chain = RetrievalQAWithSourcesChain.from_llm(llm=llm, retriever=VectorStore.as_retriever())
 
-except Exception as e:
-    st.error(f"An error occurred: {e}")
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+    # Display chat messages from history on app rerun
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+            # Prompt the user for a question or 'exit' to quit
+        if query := st.chat_input("How may I help you?"):
+            st.session_state.messages.append({"role": "user", "content": query})
+            with st.chat_message("user"):
+                st.markdown(query)
+            with get_openai_callback() as cb:
+                with st.chat_message("assistant"):
+                    message_placeholder = st.empty()
+                    full_response = ""
+                    response = chain(query, return_only_outputs=True)
+                    answer = response['answer']
+                    source = response['sources']
+                    print(response)
+                    if response:
+                        messages=[
+                        {"role": m["role"], "content": m["content"]}
+                        for m in st.session_state.messages
+                    ],
+                    stream=True,
+                    full_response += f"**Answer:** {answer}\n\n"
+                    full_response += f"**Sources:** [{source}]({source})"
+                    # full_response += answer
+                    
+                    message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+    # else:    # Get the response to the question using the retrieval question-answering chain
+    #     response = chain(query, return_only_outputs=True)
+    #     st.write(response)
+
+# Streamlit app
+
+
+if __name__ == "__main__":
+    run_question_answering()
