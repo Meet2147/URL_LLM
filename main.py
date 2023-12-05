@@ -14,7 +14,7 @@ import os
 from dotenv import load_dotenv, find_dotenv
 
 def run_question_answering():
-    # openai.api_key = st.secrets["OPENAI_API_KEY"]
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # openai_api_key = st.sidebar.text_input(
 #     label="#### Your OpenAI API key 👇",
